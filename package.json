@@ -1,0 +1,15 @@
+{
+  "name": "skillswap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkillSwap - a community skill-exchange network (MERN end-term project)",
+  "scripts": {
+    "api": "npm --prefix server run dev",
+    "web": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "setup": "npm --prefix server install && npm --prefix client install",
+    "test": "node scripts/smoke-test.mjs",
+    "test:ui": "npm --prefix client run check:ui"
+  }
+}
