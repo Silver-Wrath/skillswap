@@ -70,12 +70,12 @@ Ratings feed back into the matching engine
 ## Architecture
 
 ```text
-┌──────────────────────┐        /api (JSON, JWT)        ┌───────────────────────┐
-│  React SPA (Vite)    │ ─────────────────────────────► │   Express API         │
-│  pages + auth ctx    │ ◄───────────────────────────── │  routes/              │
-│  fetch wrapper       │   (dev: Vite proxy /api)       │   auth, users,        │
-└──────────────────────┘                               │   matches, swaps,     │
-                                                       │   stats               │
+┌──────────────────────┐        /api (JSON, JWT)        ┌───────────────────────┐│  React SPA (Vite)    │ ─────────────────────────────► │   Express app          │
+│  pages + auth ctx    │ ◄───────────────────────────── │  (server/src/app.js)   │
+│  fetch wrapper       │   (dev: Vite proxy /api)       │  routes/               │
+└──────────────────────┘                               │   auth, users,         │
+                                                       │   matches, swaps,      │
+                                                       │   stats                │
                                                        │  services/matcher.js  │
                                                        │  (scoring engine)     │
                                                        └──────────┬────────────┘
@@ -88,6 +88,10 @@ Ratings feed back into the matching engine
 ```
 
 - `server/src/models/` — data model (User, Swap, Message, Review) with schema-level validation.
+- `server/src/app.js` — the Express app itself (routes, static SPA serving, one central error
+  middleware). Imported by the local server **and** by the Vercel function.
+- `server/src/index.js` — long-running entry: connects to MongoDB and calls `app.listen()`.
+- `api/index.js` — Vercel serverless entry: same app, default-exported as a function.
 - `server/src/services/matcher.js` — the pure matching/scoring engine (unit-testable, no I/O).
 - `server/src/routes/` — HTTP layer; all handlers are wrapped so every failure returns clean JSON
   through one central error middleware (no stack traces leaked).
@@ -161,19 +165,43 @@ Both servers must be running for `npm test` and `npm run test:ui`.
 
 ## Deployment
 
-**Option A — single service (simplest):**
+### Option A — Vercel (single URL for app + API)
+
+The repo ships with a Vercel-ready configuration:
+
+- `api/index.js` exports the same Express app used locally (no `app.listen()`),
+- `vercel.json` installs deps (`npm run setup`), builds the client (`npm run build`),
+  publishes `client/dist` as static output, and rewrites `/api/*` to the function
+  plus an SPA fallback for client-side routes.
+
+Steps:
+
+1. Create a free **MongoDB Atlas** cluster (M0) → database user → network access
+   `0.0.0.0/0` → copy the `mongodb+srv://…/skillswap` connection string.
+2. Go to [vercel.com/new](https://vercel.com/new), import `Silver-Wrath/skillswap`.
+3. Add environment variables:
+   - `MONGODB_URI` — the Atlas connection string
+   - `JWT_SECRET` — generate with `openssl rand -hex 32`
+   - `CLIENT_ORIGIN` — the Vercel URL (optional; same-origin requests need no CORS)
+4. Deploy. Every push to `main` redeploys automatically.
+5. Verify: `node scripts/smoke-test.mjs https://<your-app>.vercel.app`
+
+### Option B — any long-running Node host (Render, Railway, Fly, a VPS)
+
+The server entry (`server/src/index.js`) listens on `PORT` and serves the built
+SPA from `client/dist`, so one process hosts everything:
 
 ```bash
-npm run build                # produces client/dist
-# deploy the server/ folder to Render/Railway/Fly; set MONGODB_URI (e.g. MongoDB Atlas)
-# and a strong JWT_SECRET. The API serves the built SPA at the same URL.
+npm run build
+# build command:  npm run setup && npm run build
+# start command:  npm start
+# env vars:       MONGODB_URI, JWT_SECRET, CLIENT_ORIGIN, NODE_ENV=production
 ```
 
-**Option B — split:** deploy `client/dist` to any static host (Netlify/Vercel/GitHub Pages) with
-`VITE_API_URL` pointing at the API deployment, and the API separately as in Option A.
+### Local eval without deploying
 
-Local eval without deploying: `npm run setup && npm run api && npm run web` is enough to run the
-whole product from a fresh clone.
+`npm run setup && npm run api && npm run web` is enough to run the whole product
+from a fresh clone (with MongoDB running).
 
 ## Repository Map
 
