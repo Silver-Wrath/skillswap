@@ -4,6 +4,7 @@
   "private": true,
   "description": "SkillSwap - a community skill-exchange network (MERN end-term project)",
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "api": "npm --prefix server run dev",
     "web": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
