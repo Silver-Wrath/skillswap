@@ -164,6 +164,12 @@ async function main() {
   });
   check('Alice proposes a swap', swapRes.status === 201 && swapRes.data.swap.status === 'pending');
   const swapId = swapRes.data?.swap?.id;
+  const created = swapRes.data?.swap;
+  check(
+    'swap payload exposes participant ids (used by the UI for authz checks)',
+    !!created?.requester?.id && !!created?.recipient?.id &&
+      created.requester.id === aliceId && created.recipient.id === bobId
+  );
 
   const dupSwap = await req('POST', '/api/swaps', {
     token: aliceToken,

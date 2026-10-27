@@ -16,8 +16,14 @@ const POPULATE = [
 ];
 
 function serializeSwap(swap) {
-  const o = swap.toObject({ virtuals: false });
-  return { ...o, id: String(o._id), _id: undefined };
+  const o = swap.toObject();
+  const withId = (doc) => (doc && doc._id ? { ...doc, id: String(doc._id) } : doc);
+  return {
+    ...o,
+    id: String(o._id),
+    requester: withId(o.requester),
+    recipient: withId(o.recipient),
+  };
 }
 
 async function loadSwap(id, userId) {
